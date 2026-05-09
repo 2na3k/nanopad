@@ -37,40 +37,23 @@ jobs:
           fi
           codesign --force --sign - NanoPad.app
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload .app
+        uses: actions/upload-artifact@v4
         with:
           name: NanoPad-app
           path: NanoPad.app
 
-  release:
-    if: github.ref_type == 'tag'
-    needs: build
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: NanoPad-app
-          path: .
-
-      - name: Debug — list files
-        run: ls -laR
-
-      - name: Create DMG
+      - name: Create DMG & Release
+        if: github.ref_type == 'tag'
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           hdiutil create -volname "NanoPad $VERSION" \
             -srcfolder NanoPad.app \
             -ov -format UDZO \
             "NanoPad-${VERSION}.dmg"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: NanoPad ${{ github.ref_name }}
-          body: |
-            ## NanoPad ${{ github.ref_name }}
-
-            Download `NanoPad-${{ github.ref_name }}.dmg`, open it, and drag
-            NanoPad to your Applications folder.
-          files: NanoPad-*.dmg
+          gh release create "$GITHUB_REF_NAME" \
+            --title "NanoPad $GITHUB_REF_NAME" \
+            --notes "Download \`NanoPad-${VERSION}.dmg\`, open it, and drag NanoPad to your Applications folder." \
+            "NanoPad-${VERSION}.dmg"
+        env:
+          GH_TOKEN: ${{ github.token }}
