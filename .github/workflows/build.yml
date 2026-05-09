@@ -1,0 +1,72 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: swiftpm-${{ runner.arch }}-${{ hashFiles('Package.swift') }}
+          restore-keys: swiftpm-${{ runner.arch }}-
+
+      - name: Build Release
+        run: swift build -c release
+
+      - name: Create .app Bundle
+        run: |
+          mkdir -p NanoPad.app/Contents/MacOS
+          cp .build/arm64-apple-macosx/release/NanoPad NanoPad.app/Contents/MacOS/NanoPad
+          cp Sources/NanoPad/Info.plist NanoPad.app/Contents/Info.plist
+          plutil -replace CFBundleExecutable -string NanoPad NanoPad.app/Contents/Info.plist
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            plutil -replace CFBundleShortVersionString -string "$VERSION" NanoPad.app/Contents/Info.plist
+            plutil -replace CFBundleVersion -string "${{ github.run_number }}" NanoPad.app/Contents/Info.plist
+          fi
+          codesign --force --sign - NanoPad.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NanoPad-app
+          path: NanoPad.app
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: NanoPad-app
+
+      - name: Create DMG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          hdiutil create -volname "NanoPad $VERSION" \
+            -srcfolder NanoPad.app \
+            -ov -format UDZO \
+            "NanoPad-$VERSION.dmg"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: NanoPad ${{ github.ref_name }}
+          body: |
+            ## NanoPad ${{ github.ref_name }}
+
+            Download `NanoPad-${{ github.ref_name }}.dmg`, open it, and drag
+            NanoPad to your Applications folder.
+          files: NanoPad-*.dmg
