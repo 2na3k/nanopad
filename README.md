@@ -73,92 +73,77 @@ Only the checklist syntax is interactive – the rest is display‑only formatti
 └─────────────────────────────────────────────┘
 ```
 
-## Implementation Plan
+## Building
 
-### Phase 1 – Scaffold
+Requires Xcode ≥15 and macOS 13+.
 
-1. Create a new **macOS App** Xcode project (SwiftUI app with `MenuBarExtra`).
-2. Set `LSUIElement = YES` in `Info.plist` so the app has no dock icon.
-3. Add a `MenuBarExtra` with a system‑symbol checkbox icon.
-4. Present a `Popover` with a `TextEditor` inside.
+```bash
+swift build -c release
+```
 
-### Phase 2 – Persistence
+The binary is at `.build/arm64-apple-macosx/release/NanoPad`. To create a
+standalone `.app` bundle:
 
-1. Define `NoteStore` – a class wrapping `UserDefaults` or file I/O.
-2. Store note content in `~/Library/Application Support/com.nanopad/note.md`.
-3. Implement `String` extension for reading/writing to a file path.
-4. Auto‑save on a 500 ms debounce timer after every text change.
+```bash
+mkdir -p NanoPad.app/Contents/MacOS
+cp .build/arm64-apple-macosx/release/NanoPad NanoPad.app/Contents/MacOS/
+cp Sources/NanoPad/Info.plist NanoPad.app/Contents/Info.plist
+plutil -replace CFBundleExecutable -string NanoPad NanoPad.app/Contents/Info.plist
+codesign --force --sign - NanoPad.app
+```
 
-### Phase 3 – Checklist Interactivity
+Then drag `NanoPad.app` to `/Applications`.
 
-1. Parse the text on every edit to build a list of checklist line ranges.
-2. Overlay invisible `NSButton` (or `Toggle`) frames on checklist lines.
-3. When toggled, replace `- [ ]` ↔ `- [x]` in the source text.
-4. Use `NSTextStorage` delegate or `NSAttributedString` for syntax
-   highlighting (headers bold, checkboxes coloured, etc.).
+## Releasing
 
-### Phase 4 – Global Hotkey
+NanoPad uses semantic versioning with a `v` prefix:
 
-1. Use `CGEvent` tap or `Carbon.RegisterEventHotKey` to listen for `⌥ Space`.
-2. Toggle the popover's `isShown` on hotkey press.
-3. Request accessibility permissions on first launch if needed.
+| Git tag     | Example |
+|-------------|---------|
+| `v1.2.3`    | Bug fix or minor change |
+| `v1.3.0`    | New feature (backward-compatible) |
+| `v2.0.0`    | Breaking change |
 
-### Phase 5 – Quality of Life
+**To cut a new release:**
 
-1. **Pin note** – keep popover open even after losing focus.
-2. **New note** – clear content (with confirmation if unsaved).
-3. **Trash / archive** – move current note to a trash folder.
-4. **Drag‑to‑reorder** checklist items via `NSCollectionView`.
-5. **Export / copy as plain text**.
+```bash
+# 1. Tag the current commit
+git tag v1.0.0
 
-### Phase 6 – Polish
+# 2. Push the tag — the CI pipeline builds the DMG and creates a
+#    GitHub Release automatically.
+git push origin v1.0.0
+```
 
-1. Launch at login via `SMAppService` (macOS 13+) or
-   `SMLoginItemSetEnabled`.
-2. Preferences window (font size, hotkey rebinding, storage location).
-3. Light / dark icon variants.
-4. Accessibility: VoiceOver labels, full keyboard navigation.
+The CI workflow (`.github/workflows/build.yml`) will:
 
-## File Tree (Proposed)
+1. Build the release binary.
+2. Sign the `.app` bundle.
+3. Generate `NanoPad-<version>.dmg`.
+4. Create a GitHub Release with the DMG attached.
+
+You can also download the `.app` artifact from any CI run on `main` via the
+Actions tab, without cutting a full release.
+
+## File Tree
 
 ```
 NanoPad/
-├── NanoPadApp.swift              # @main entry, MenuBarExtra setup
-├── ContentView.swift             # Popover root view
-├── EditorView.swift              # NSTextView wrapper with highlighting
-├── ChecklistOverlay.swift        # Invisible toggle buttons on checklist rows
-├── NoteStore.swift               # Read / write / debounce persistence
-├── SyntaxHighlighter.swift       # NSAttributedString formatting
-├── HotKeyManager.swift           # Global keyboard shortcut registration
-├── PreferencesView.swift         # Settings pane
-├── Assets.xcassets/
-│   ├── Icon.pdf                  # Template image for menu bar
-│   └── AccentColor.colorset/
-├── Info.plist                    # LSUIElement = YES
+├── Package.swift                 # SwiftPM manifest
+├── Sources/NanoPad/
+│   ├── NanoPadApp.swift          # @main, NSStatusItem + NSPopover
+│   ├── ContentView.swift         # Toolbar + editor layout
+│   ├── EditorView.swift          # ChecklistTextView with syntax highlighting
+│   ├── NoteStore.swift           # Persistence with auto-save
+│   ├── SyntaxHighlighter.swift   # Regex-based NSAttributedString
+│   ├── HotKeyManager.swift       # Global ⌥ Space hotkey
+│   ├── PreferencesView.swift     # Font size + hotkey info
+│   └── Info.plist                # LSUIElement = YES
+├── .github/workflows/build.yml   # CI: build + DMG release
+├── LICENSE
 └── README.md
 ```
 
-## Potential Challenges
+## License
 
-- **NSTextView inside SwiftUI** – Use `NSViewRepresentable` to wrap the
-  text view. Managing first‑responder state across popover show/hide cycles
-  requires care.
-- **Checkbox hit‑testing** – The text is in a scroll view. Overlay positions
-  must be recalculated on scroll, resize, and text change.
-- **Global hotkey on macOS** – Modern macOS requires
-  `com.apple.security.device.events` entitlement or using a helper binary.
-  Consider using `TISInputSource`‑based monitoring as a lighter alternative.
-- **Sandboxing** – If distributing via the Mac App Store, file access needs
-  security‑scoped bookmarks or a sandbox‑compatible storage strategy.
-
-## Non‑Goals
-
-- Cloud sync (iCloud, Dropbox, etc.)
-- Rich text / WYSIWYG editing (bold/italic is display‑only)
-- Multiple documents / tabs
-- Search (system‑level Spotlight can index the plain‑text file)
-- Markdown export or rendering (raw `.md` is the source of truth)
-
----
-
-> **NanoPad – *write it down, get it done.** *
+MIT — see [LICENSE](LICENSE).
