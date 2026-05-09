@@ -51,6 +51,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: NanoPad-app
+          path: .
+
+      - name: Debug — list files
+        run: ls -laR
 
       - name: Create DMG
         run: |
@@ -58,7 +62,7 @@ jobs:
           hdiutil create -volname "NanoPad $VERSION" \
             -srcfolder NanoPad.app \
             -ov -format UDZO \
-            "NanoPad-$VERSION.dmg"
+            "NanoPad-${VERSION}.dmg"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
