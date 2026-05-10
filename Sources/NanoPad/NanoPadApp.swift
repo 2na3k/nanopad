@@ -20,6 +20,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var hotkey: HotKeyManager!
     private let store = NoteStore.shared
 
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         Self.shared = self
         NSApp.setActivationPolicy(.accessory)
@@ -77,18 +81,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
-    @objc func showPreferences() {
-        closePopover()
-
-        let window = NSWindow(
+    private lazy var prefsWindow: NSWindow = {
+        let w = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 320, height: 220),
             styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
-        window.title = "Preferences"
-        window.contentViewController = NSHostingController(rootView: PreferencesView())
-        window.makeKeyAndOrderFront(nil)
+        w.title = "Preferences"
+        w.isReleasedWhenClosed = false
+        w.contentViewController = NSHostingController(rootView: PreferencesView())
+        return w
+    }()
+
+    @objc func showPreferences() {
+        closePopover()
+        prefsWindow.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 }
