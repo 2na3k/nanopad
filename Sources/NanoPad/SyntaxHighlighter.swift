@@ -9,6 +9,7 @@ enum SyntaxHighlighter {
         let fullRange = NSRange(location: 0, length: textStorage.length)
         let nsString = textStorage.string as NSString
 
+        textStorage.beginEditing()
         textStorage.setAttributes(
             [.font: font, .foregroundColor: NSColor.labelColor],
             range: fullRange
@@ -56,6 +57,7 @@ enum SyntaxHighlighter {
                 textStorage.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: lineRange)
             }
         }
+        textStorage.endEditing()
     }
 
     private static func enumerate(_ regex: NSRegularExpression, in nsString: NSString, using block: (NSRange) -> Void) {
