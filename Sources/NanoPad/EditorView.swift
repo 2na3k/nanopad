@@ -65,6 +65,7 @@ struct EditorView: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.drawsBackground = false
+        textView.layoutManager?.allowsNonContiguousLayout = true
 
         scrollView.documentView = textView
         return scrollView
@@ -77,7 +78,10 @@ struct EditorView: NSViewRepresentable {
             textView.string = text
             textView.selectedRanges = selectedRanges
         }
-        SyntaxHighlighter.apply(to: textView)
+        if context.coordinator.highlightedText != text {
+            SyntaxHighlighter.apply(to: textView)
+            context.coordinator.highlightedText = text
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -86,6 +90,7 @@ struct EditorView: NSViewRepresentable {
 
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: EditorView
+        var highlightedText: String?
 
         init(_ parent: EditorView) {
             self.parent = parent
