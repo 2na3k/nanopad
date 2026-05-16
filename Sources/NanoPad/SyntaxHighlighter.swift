@@ -1,13 +1,16 @@
 import AppKit
 
 enum SyntaxHighlighter {
+    private static var baseFont: NSFont {
+        .monospacedSystemFont(ofSize: 10, weight: .regular)
+    }
+
     static func apply(to textView: NSTextView) {
-        guard let textStorage = textView.textStorage,
-              let font = textView.font
-        else { return }
+        guard let textStorage = textView.textStorage else { return }
 
         let fullRange = NSRange(location: 0, length: textStorage.length)
         let nsString = textStorage.string as NSString
+        let font = baseFont
 
         textStorage.beginEditing()
         textStorage.setAttributes(

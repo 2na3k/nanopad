@@ -60,6 +60,10 @@ struct EditorView: NSViewRepresentable {
         textView.font = .monospacedSystemFont(ofSize: 10, weight: .regular)
         textView.textContainerInset = NSSize(width: 12, height: 8)
         textView.allowsUndo = true
+        textView.typingAttributes = [
+            .font: NSFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+            .foregroundColor: NSColor.labelColor
+        ]
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
